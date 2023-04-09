@@ -3,6 +3,7 @@
 
 import layoutparser as lp
 import cv2
+import pandas as pd
 
 # %% ---------------------------------------------------------------------------
 # define parameters
@@ -73,21 +74,21 @@ lp.draw_box(image, layout, box_width=3)
 block_types = set([b.type for b in layout])
 print(block_types)
 
-text_blocks = lp.Layout([b for b in layout if b.type=='Text'])
-figure_blocks = lp.Layout([b for b in layout if b.type=='Figure'])
-table_blocks = lp.Layout([b for b in layout if b.type=='Table'])
-title_blocks = lp.Layout([b for b in layout if b.type=='Title'])
+text_blocks = lp.Layout([b for b in layout if 'text' in b.type.lower()])
+figure_blocks = lp.Layout([b for b in layout if 'figure' in b.type.lower()])
+table_blocks = lp.Layout([b for b in layout if 'table' in b.type.lower()])
+title_blocks = lp.Layout([b for b in layout if 'title' in b.type.lower()])
 # separator_blocks = lp.Layout([b for b in layout if b.type=='Separator'])
 
 # %% ---------------------------------------------------------------------------
 # set up OCR
 
-ocr_agent = lp.TesseractAgent(languages='eng')
+# ocr_agent = lp.TesseractAgent(languages='kor')
 
 # lp.is_paddle_available()
 # ocr_agent = lp.paddleocr_agent(languages='eng')
 
-# ocr_agent = lp.GCVAgent.with_credential("<path/to/your/credential>", languages = ['en', 'ko'])
+ocr_agent = lp.GCVAgent.with_credential("/home/lstm/.gcp/koreacaselaw-ffe91e33f191.json", languages = ['en', 'ko'])
 
 # %% --------------------------------------------------------------------------
 # read in texts in text & title blocks
@@ -98,7 +99,7 @@ for block in title_blocks:
                        .pad(left=5, right=5, top=5, bottom=5)
                        .crop_image(image))
         # add padding in each image segment can help improve robustness
-
+    
     text = ocr_agent.detect(segment_image)
     block.set(text=text, inplace=True)
 	
@@ -152,23 +153,60 @@ for idx, block in enumerate(separator_blocks):
 # %% ---------------------------------------------------------------------------
 # put everything in dictionary, and order by upper left coordinate
 
-all_blocks = title_blocks + text_blocks + figure_blocks + table_blocks + separator_blocks
-all_blocks = all_blocks.sort(key = lambda b:b.coordinates[1])
+all_blocks = title_blocks + text_blocks + figure_blocks + table_blocks# + separator_blocks
+all_blocks = all_blocks.sort(key = lambda b:b.coordinates[1]).to_dataframe()
+all_blocks.rename(columns={'text':'text_block'}, inplace=True)
 
-# all_blocks.to_dict()	
+# convert each text region (i.e. collection of text blocks) to paragraph of lines and words
+def region_to_paragraph(region):
+
+========================= from here 
+    
+    if type(region)==lp.elements.layout.Layout:
+        return region.get_text().replace('
+
+
+
+
+
+
+all_blocks['text'].apply(
+    lambda x: x.to_dict() if type(x)==lp.elements.layout.Layout else {}
+    ).apply(pd.Series)[
+    'blocks'
+    ].apply(pd.Series)
+
+pd.DataFrame(all_blocks['text_block'].apply)
+all_blocks['text'] = all_blocks['text_block'].apply(
+    lambda x: pd.Series(x.to_dict()) if type(x)==lp.elements.layout.Layout else x)
+
+print('block keys:', all_blocks.keys())
+all_blocks['blocks']
+print('text block keys:', all_blocks['text'].keys())
 
 # %% ---------------------------------------------------------------------------
 # convert to better-structured key-value pair
 
+all_blocks = all_blocks.to_dataframe()
+
+
 dict_block = {}
 for idx, item in enumerate(all_blocks):
+    print(item.to_dict()['x_1'])
         
     entry = {}
     entry['coordiates'] = item.coordinates    
     entry['type'] = item.type
+
     if item.type == 'Text':
-        entry['text'] = item.text
-        entry['text_id'] = item.id
+        colnames = ['x0', 'yo', 'x1', 'y1', 'x3', 'y3', 'x4', 'y4']
+        points_2frame = pd.DataFrame(item.text.to_dataframe().points.to_list(), columns=colnames)
+        rest_2frame = item.text.to_dataframe().set_index('id').drop(columns=['points'])       
+
+        df_text = pd.concat([points_2frame, rest_2frame], axis=1) 
+
+
+ 
     if item.type == 'Figure':
         entry['filename'] = 'image_' + str(item.id) + '.png'
         entry['figure_id'] = item.id
@@ -198,3 +236,9 @@ with doc:
         p('Lorem ipsum..')
 
 print(doc)
+
+
+# convert series of list to matrix
+# https://stackoverflow.com/questions/312443/how-do-you-split-a-list-into-evenly-sized-chunks-in-python
+
+

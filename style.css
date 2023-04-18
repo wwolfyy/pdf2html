@@ -61,7 +61,7 @@ footer {
 /* modify file uploader */
 .css-9ycgxx.exg6vvm12 {visibility: hidden;}
 .css-9ycgxx.exg6vvm12:before {
-    content: "파일을 여기로 끌어오거나 'Browse files'버튼을 눌러 파일을 선택한 후 '파일 업로드' 버튼을 누르세요."; 
+    content: "파일을 여기로 끌어오거나 'Browse files' 버튼을 눌러 파일을 선택하세요."; 
     visibility: visible;
 }     
 .css-1u5bms5.euu6i2w0 {visibility: hidden;}                

@@ -2,10 +2,11 @@
 import fitz
 fitz.__doc__
 # %%
-filename = '/home/lstm/Downloads/누락판례/image/done/특허법원_2017허2727_판결서'
+filename = '/home/lstm/Github/pdf2html/DATA_sample/판례/image/특허법원_2017허2727_판결서.pdf'
+
 # filename = '/home/lstm/Downloads/누락판례/image/done/특허법원_2016나1691_판결서'
 # filename = '/home/lstm/Downloads/누락판례/text/대법원_2020도1007_판결서'
-doc = fitz.open(filename + '.pdf')
+doc = fitz.open(filename)
 doc
 # %%
 page4 = doc[3]
@@ -25,13 +26,13 @@ for annot in page4.annots():
         # mywords = [w for w in words if fitz.Rect(w[:4]) in rec]
 # %%
 page4.clean_contents()
-for img in page1.get_images():
+for img in page4.get_images():
     print(img)
 
 # %%
 
 first_annots=[]
-rec=page1.first_annot.rect
+rec=page4.first_annot.rect
 rec
 
 # %%

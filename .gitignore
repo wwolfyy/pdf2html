@@ -1,2 +1,7 @@
 fontfiles/INPILL+�޸հ���-0118.ttf
 fontfiles/INPILL+�޸հ���-0118.ttf
+
+*.pyc
+
+DATA/training_data/**/*
+repo-layout-parser/**/*

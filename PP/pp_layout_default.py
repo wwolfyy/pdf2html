@@ -11,11 +11,11 @@ if p not in sys.path:
 from helpers.utils_fitz import pdf2image, parse_pdf
 
 # get layout
-table_engine = PPStructure(show_log=True) #, image_orientation=True)
+table_engine = PPStructure(table=False, ocr=False, show_log=True) #, image_orientation=True)
 
 save_folder = './output'
 # img_path = '/home/lstm/Github/pdf2html/누락판례/png/image_footnote.png'
-img_path = '/home/lstm/Github/pdf2html/DATA_sample/보험/image_insurance_p45.png'
+img_path = '/home/lstm/Github/pdf2html/DATA_sample/보험/png/image_insurance_p45.png'
 img = cv2.imread(img_path)
 result = table_engine(img)
 save_structure_res(result, save_folder,os.path.basename(img_path).split('.')[0])
@@ -34,7 +34,3 @@ im_show.save('result.jpg')
 doc_path = '/home/lstm/Github/pdf2html/DATA_sample/보험/sample_insurance_policy.pdf'
 doc = fitz.open(doc_path)
 page43 = doc[42]
-
-
-
-

@@ -1,0 +1,17 @@
+text parsing strategy
+
+- pymupdf xhtml
+    detects superscripts (<sup> </sup>)
+    reads texts by line (tagged as <p>) (paragraph if footnote)
+
+- pymupdf dict
+    doesn't detect superscripts
+    reads texts by word (tagged as <span>)
+
+- pymupdf json
+    doesn't detect superscripts
+    reads texts by line (tagged as <span>)
+
+- naver OCR
+    can't detect superscript
+    reads texts by word

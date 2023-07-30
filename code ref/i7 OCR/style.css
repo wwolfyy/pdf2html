@@ -1,0 +1,32 @@
+#MainMenu {
+    visibility: hidden;
+} 
+
+footer {
+    visibility: hidden;
+}
+
+/* header {
+    visibility: hidden;
+}  */
+
+.css-9ycgxx.exg6vvm12 {visibility: hidden;}
+.css-9ycgxx.exg6vvm12:before {
+    content: "파일을 여기로 끌어오거나 'Browse files'버튼을 눌러 파일을 선택하세요."; 
+    visibility: visible;
+}     
+.css-1u5bms5.euu6i2w0 {visibility: hidden;}                
+.css-1u5bms5.euu6i2w0:before {
+    content: "최대 200MB"; 
+    visibility: visible;
+} 
+
+.css-9gllcy.effi0qh1 {visibility: hidden;}
+
+iframe {
+    border: 1px solid #0c0d0d;
+}
+
+div[data-testid="stImage"] {
+    border: 1px solid #0c0d0d;
+} 

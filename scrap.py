@@ -11,8 +11,8 @@ sys.path.append(os.path.abspath('./helpers'))
 from helpers.utils_fitz import is_scanned_pdf, display_page_with_bbox # for checking scanned PDF
 from helpers.utils_fitz import pdf2image, parse_pdf # for checking layout (table, image, separator, footnote)
     #is_scanned_pdf_by_size, is_scanned_pdf_by_counts, is_blank_image \
-    #get_block_bbox, parse_pdf, get_fonts_meta, pdf2image, get_text_length, get_num_images 
-from helpers.utils_fitz import get_fonts_meta, get_block_bbox     
+    #get_block_bbox, parse_pdf, get_fonts_meta, pdf2image, get_text_length, get_num_images
+from helpers.utils_fitz import get_fonts_meta, get_block_bbox
 
 # max number of texts to be considered scanned
 max_chars = 100
@@ -37,9 +37,9 @@ for testdoc in testdocs:
     print(testdoc)
     doc = fitz.open(f'{docpath}/{testdoc}')
     scanned, df_stats = is_scanned_pdf(
-        doc, 
+        doc,
         max_text_length=max_chars,
-        std_pix_threhold=5, 
+        std_pix_threhold=5,
         display_page_bbox=True,
         display_image=True,
         # display_stats=True,
@@ -81,19 +81,19 @@ for testdoc in testdocs:
         page_image = page.get_pixmap()
 
         # convert to np array
-        pic = np.array(Image.open(BytesIO(page_image.tobytes())))        
+        pic = np.array(Image.open(BytesIO(page_image.tobytes())))
 
         # get layout
         result = table_engine(pic)
 
         # show result
-        if page_id == 0 or page_id % 5 == 0:            
+        if page_id == 0 or page_id % 5 == 0:
             im_show = draw_structure_result(pic, result,font_path=font_path)
             im_show = Image.fromarray(im_show)
             im_show.show()
 
         # reorder result by bbox[1] (y1), then bbox[0] (x1)
-        result = sorted(result, key=lambda x: (x['bbox'][1], x['bbox'][0]))        
+        result = sorted(result, key=lambda x: (x['bbox'][1], x['bbox'][0]))
 
         block_dict = {}
         for block_id, block in enumerate(result):
@@ -105,10 +105,10 @@ for testdoc in testdocs:
     # save docts_dict as json file, using json library, with indent=4
     with open(f'{save_folder}/{testdoc}.json', 'w') as f:
         json.dump(docs_dict, f, indent=4)
-        
-    
-    
-        
+
+
+
+
 # %%
 # take pages 10 ~ 13 of pdf and save as pdf
 doc = fitz.open('/mnt/c/users/jp/downloads/myanycar_personal.pdf')
@@ -117,7 +117,7 @@ doc.save('/mnt/c/users/jp/downloads/sample_portrait.pdf')
 
 
 # %%
-        
+
 
 
 
@@ -237,3 +237,6 @@ doc = fitz.open(file_path)
 page_number = 0
 page = doc[page_number]
 display_page_with_text_overlay(testpage)
+
+
+

@@ -28,7 +28,7 @@ from helpers.utils_pp import render_PP_layout_from_array
 
 # %% define functions
 
-def convert_pdf():
+def convert_pdf(pdf_bytes):
     # parameters
     # parsers
     layout_parser = 'PP'
@@ -38,21 +38,21 @@ def convert_pdf():
     # folderpath = "./DATA/training_data/leg_trend/Issue_pdf/"
     # docindex = 6
 
-    folderpath = "../DATA/training_data/leg_trend/fail1/"
-    docindex = 0
+    # folderpath = "../DATA/training_data/leg_trend/fail1/"
+    # docindex = 0
 
     # folderpath = "./DATA/cases/" # 2022허4406.pdf"
     # docindex = 0
 
-    doclist = os.listdir(folderpath)
+    # doclist = os.listdir(folderpath)
     # print(doclist)
 
-    docpath = os.path.join(folderpath, doclist[docindex])
+    # docpath = os.path.join(folderpath, doclist[docindex])
     # print(doclist[docindex])
 
     # read doc
-    doc = fitz.open(docpath)
-    # doc = fitz.open(stream=pdf_bytes, filetype='pdf')
+    # doc = fitz.open(docpath)
+    doc = fitz.open(stream=pdf_bytes, filetype='pdf')
 
     rotation = doc.load_page(0).rotation
     # if not rotation == 0:
@@ -201,7 +201,13 @@ def convert_pdf():
             elif el['type'] == 'text':
                 text_bbox = text_bbox + [el['bbox']]
             else:
-                raise ValueError('Unknown type of layout element')
+                print(el['type'])
+                if el['type'] == 'equation':
+                    print('LAUOUT: changing equation to text')
+                    layout_result[i]['type'] = 'text'
+                    text_bbox = text_bbox + [el['bbox']]
+                else:
+                    raise ValueError('Unknown type of layout element')
 
         # tag each line for header, reference, footer, and [[ title ]] -- against layout_result
         title_pattern = r'^[A-Za-z0-9Ⅰ-Ⅻ가-힣ㄱ-ㅎ]{1}[^\w\s]*\s*[\uac00-\ud7af]+'

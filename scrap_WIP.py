@@ -28,7 +28,7 @@ from helpers.utils_pp import render_PP_layout_from_array
 
 # %% define functions
 
-def convert_pdf():
+def convert_pdf(pdf_bytes):
     # parameters
     # parsers
     layout_parser = 'PP'
@@ -38,21 +38,21 @@ def convert_pdf():
     # folderpath = "./DATA/training_data/leg_trend/Issue_pdf/"
     # docindex = 6
 
-    folderpath = "./DATA/training_data/leg_trend/fail1/"
-    docindex = 8
+    # folderpath = "./DATA/training_data/leg_trend/fail1/"
+    # docindex = 6
 
     # folderpath = "./DATA/cases/" # 2022허4406.pdf"
     # docindex = 0
 
-    doclist = os.listdir(folderpath)
+    # doclist = os.listdir(folderpath)
     # print(doclist)
 
-    docpath = os.path.join(folderpath, doclist[docindex])
-    print(doclist[docindex])
+    # docpath = os.path.join(folderpath, doclist[docindex])
+    # print(doclist[docindex])
 
     # read doc
-    doc = fitz.open(docpath)
-    # doc = fitz.open(stream=pdf_bytes, filetype='pdf')
+    # doc = fitz.open(docpath)
+    doc = fitz.open(stream=pdf_bytes, filetype='pdf')
 
     rotation = doc.load_page(0).rotation
     # if not rotation == 0:
@@ -305,8 +305,65 @@ def convert_pdf():
 
         # TODO concatenate text lines between titles
 
+
+        # TODO add visual check for layout parsing ===============================================
+        # add reference bbox
+        # function to render multiple groups of bboxes with an image, with matpliotlib
+        def render_bboxes_2_with_image(
+            image_byte: str, # byte string
+            bbox_groups: list, # list of list of bboxes in [x0, y0, x1, y1] format
+            labels: list,
+            label_index: int, # index of bbox group to label
+            color: list,
+            alpha=0.5, thickness=1, dpi=200, fontsize=6,
+            display_labels=True,
+            show=True):
+
+            img = Image.open(BytesIO(image_byte))
+            height, width = img.size
+            figsize = width / float(dpi), height / float(dpi)
+            fig = plt.figure(figsize=figsize, dpi=dpi)
+            ax = fig.add_axes([0, 0, 1, 1])
+            ax.axis('off') # hide axis
+
+            # add bboxes
+            for bboxes, c in zip(bbox_groups, color):
+                for bbox in bboxes:
+                    x0, y0, x1, y1 = bbox
+                    rect = patches.Rectangle((x0, y0), x1 - x0, y1 - y0, linewidth=thickness, edgecolor=c, facecolor='none', alpha=alpha)
+                    ax.add_patch(rect)
+
+            # add labels
+            for label_idx in label_index:
+                for idx, bboxes in enumerate(bbox_groups[label_idx]):
+                    x0, y0, x1, y1 = bboxes
+                    ax.text(x0, y0, labels[idx], fontsize=fontsize, color='green')#, bbox=dict(facecolor='white', alpha=0.5))
+
+            if display_labels:
+                plt.imshow(img)
+
+            return fig
+
+        # display bbox & add to parsed_dict
+        bbox_groups = [ref_bbox, header_bbox, title_bbox, footer_bbox, text_bbox,
+                       figure_bbox, figure_caption_bbox, table_bbox]
+        label_index = range(len(bbox_groups))
+
+        for idx in range(len(bbox_groups)):
+            fig_w_bbox = render_bboxes_2_with_image(
+                image_byte=img_data,
+                bbox_groups=bbox_groups,
+                labels=['reference', 'header', 'title', 'footer', 'text', 'figure', 'figure_caption', 'table'],
+                color=['red', 'blue', 'green', 'yellow', 'orange', 'purple', 'pink', 'cyan'],
+                label_index=idx,
+                show=True
+            )
+
         # put in parsed_dict
         parsed_dict[pagenum] = line_list
+
+        # add image bytes to parsed_dict
+        parsed_dict['bbox_images'][pagenum] = fig_w_bbox
 
     # convert image bytestrings to base64 encoded strings
     for key, val in parsed_dict.items():
@@ -325,26 +382,30 @@ parsed_dict = eval(convert_pdf()['result'])
 # --------------------------------- from here --------------------
 for i in parsed_dict.keys():
 
-    bboxes1 = [parsed_dict[i][j]['bbox'] for j in range(len(parsed_dict[i]))]
-    bboxes2 = [parsed_dict[i]['texts']['blocks'][j]['bbox'] for j in range(len(parsed_dict[i]['texts']['blocks']))]
-    print(bboxes2)
-    bbox_groups = [bboxes1, bboxes2]
-    labels = [parsed_dict[i]['layout'][j]['type'] for j in range(len(parsed_dict[i]['layout']))]
-    label_index = 0
+    for j in range(len(parsed_dict[i])):
 
-    image_byte = parsed_dict[i]['imagebytes_page']
-    layout_image_array = parsed_dict[i]['imagearray_layout']
+        bboxes1 = [parsed_dict[i][j]['bbox'] for j in range(len(parsed_dict[i]))]
 
-    render_bboxes_2_with_image(
-        image_byte=image_byte,
+    break
+        # bboxes2 = [parsed_dict[i]['texts']['blocks'][j]['bbox'] for j in range(len(parsed_dict[i]['texts']['blocks']))]
+        print(bboxes2)
+        bbox_groups = [bboxes1, bboxes2]
+        labels = [parsed_dict[i]['layout'][j]['type'] for j in range(len(parsed_dict[i]['layout']))]
+        label_index = 0
 
-        bbox_groups=bbox_groups,
-        labels=labels,
-        label_index=label_index,
-        color=['red', 'blue'],
-        fontsize=4,
-        # display_labels=False,
-        alpha=0.5, thickness=1, dpi=200)
+        image_byte = parsed_dict[i]['imagebytes_page']
+        layout_image_array = parsed_dict[i]['imagearray_layout']
+
+        render_bboxes_2_with_image(
+            image_byte=image_byte,
+
+            bbox_groups=bbox_groups,
+            labels=labels,
+            label_index=label_index,
+            color=['red', 'blue'],
+            fontsize=4,
+            # display_labels=False,
+            alpha=0.5, thickness=1, dpi=200)
 
     render_PP_layout_from_array(layout_image_array)
 

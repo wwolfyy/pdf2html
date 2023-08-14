@@ -238,12 +238,14 @@ def bbox_overlap_percentage(
 
 # function to render multiple groups of bboxes with an image, with matpliotlib
 def render_bboxes_2_with_image(
-    image_byte: str,
+    image_byte: str, # b64 string
     bbox_groups: list, # list of list of bboxes in [x0, y0, x1, y1] format
     labels: list,
     label_index: int, # index of bbox group to label
     color: list,
-    alpha=0.5, thickness=1, dpi=200, fontsize=6, display_labels=True):
+    alpha=0.5, thickness=1, dpi=200, fontsize=6,
+    display_labels=True,
+    show=True):
 
     img = Image.open(BytesIO(image_byte))
     height, width = img.size
@@ -260,12 +262,15 @@ def render_bboxes_2_with_image(
             ax.add_patch(rect)
 
     # add labels
-    if display_labels:
-        for idx, bboxes in enumerate(bbox_groups[label_index]):
+    for label_idx in label_index:
+        for idx, bboxes in enumerate(bbox_groups[label_idx]):
             x0, y0, x1, y1 = bboxes
             ax.text(x0, y0, labels[idx], fontsize=fontsize, color='green')#, bbox=dict(facecolor='white', alpha=0.5))
 
-    plt.imshow(img)
+    if display_labels:
+        plt.imshow(img)
+
+    return fig
 
 
 # %% functino to parse layout

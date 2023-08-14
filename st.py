@@ -109,19 +109,180 @@ def bbox_overlap_percentage(bbox1, bbox2):
     return intersection / area1 * 100, intersection / area2 * 100
 
 
-choose = option_menu("Deep Neural Network Document & Image Parser", ["PDF: 유사 단락 검색 모델"], # & 이미지"],
-                        icons=['file-earmark-pdf-fill'],
-                        menu_icon="pencil-square", default_index=0,
-                        orientation='horizontal',
-                        styles={
-    # "container": {"padding": "5!important", "background-color": "#fafafa"},
-    "icon": {"color": "orange", "font-size": "25px"},
-    "nav-link": {"font-size": "16px", "text-align": "left", "margin":"0px", "--hover-color": "#eee"},
-    "nav-link-selected": {"background-color": "skyblue"},
+choose = option_menu(
+    "Deep Neural Network Document & Image Parser",
+    ["PDF2HTML: 법제 동향", "PDF2HTML 판례", "PDF 유사 단락 검색"], # & 이미지"],
+    icons=['file-earmark-pdf-fill'],
+    menu_icon="pencil-square", default_index=0,
+    orientation='horizontal',
+    styles={
+        # "container": {"padding": "5!important", "background-color": "#fafafa"},
+        "icon": {"color": "orange", "font-size": "25px"},
+        "nav-link": {"font-size": "16px", "text-align": "left", "margin":"0px", "--hover-color": "#eee"},
+        "nav-link-selected": {"background-color": "skyblue"},
     }
 )
 
-if choose == "PDF: 유사 단락 검색 모델":
+if choose == "PDF2HTML: 법제 동향":
+
+    st.write('법제 동향 PDF --> HTML 변환')
+
+    # st.markdown(
+    #     """
+    #     <p style='font-size:12px;'>
+    #     *. <br>
+    #     *. <br>
+    #     *.<p>
+    #     """,
+    #     unsafe_allow_html=True
+    # )
+
+    file = st.file_uploader('upload pdf', type=['pdf']) #, 'jpg', 'png', 'jpeg'])
+
+    if not st.session_state['parsing_done_trend']:
+        if file is not None:
+
+            doc = fitz.open(stream=file.read(), filetype='pdf')
+            rotation = doc.load_page(0).rotation
+            if not rotation == 0:
+                st.warning('테스트 서버에서는 세로 형식의 문서만 지원합니다.')
+                st.experimental_rerun()
+            dimension = (doc[0].get_pixmap().irect[2], doc[0].get_pixmap().irect[3])
+
+            st.session_state['doc'] = doc
+            st.session_state['dimension'] = dimension
+
+            # parse structure with PP
+            table_engine = PPStructure(show_log=True) #, image_orientation=True)
+
+            with st.spinner('문서 구조를 인식중입니다'):
+
+                parsed_dict = {}
+
+                # get structure
+                for pagenum, page in enumerate(doc):
+
+                    page_image = page.get_pixmap()
+
+                    # convert to np array
+                    pic = np.array(Image.open(BytesIO(page_image.tobytes())))
+
+                    # get layout
+                    result = table_engine(pic)
+
+                    xcoords = [box['bbox'][0] for box in result]
+
+                    if len(xcoords) > 1:
+                        num_cols, grouping = estimate_columns(np.array(xcoords).reshape(-1, 1))
+                    else:
+                        num_cols = 1
+                        grouping = [0]
+
+                    # group xcoords by column, then sort by y0, if more than 1 column
+                    if num_cols > 1:
+                        col1 = [xcoords[i] for i in range(len(xcoords)) if grouping[i] == 0]
+                        col2 = [xcoords[i] for i in range(len(xcoords)) if grouping[i] == 1]
+
+                        group1 = [box for box in result if box['bbox'][0] in col1]
+                        group2 = [box for box in result if box['bbox'][0] in col2]
+
+                        group1 = sorted(group1, key=lambda x: x['bbox'][1])
+                        group2 = sorted(group2, key=lambda x: x['bbox'][1])
+
+                        # tag first element of group2 as "continued" if continued from group1
+                        if group1[-1]['type'] == 'text' and group2[0]['type'] == 'text':
+                            group2[0]['continued'] = True
+
+                        result = group1 + group2
+
+                    else:
+                        result = sorted(result, key=lambda x: x['bbox'][1])
+
+                    # get texts using pymupdf
+                    page_blocks = page.get_text('blocks')
+
+                    # put blocks into result
+                    for i, box in enumerate(result):
+
+                        bbox1 = box['bbox']
+                        result[i]['text_blocs'] = []
+
+                        for block in page_blocks:
+
+                            block_bbox = block[:4]
+                            # block_text = block[4]
+
+                            bbox2 = block_bbox
+
+                            # determine which block in result overlaps more than 50% with the block in page_blocks
+                            overlap_structure, overlap_pdf = bbox_overlap_percentage(bbox1, bbox2)
+
+                            if overlap_structure > 50 and overlap_pdf > 50:
+                                result[i]['text_blocs'] = result[i]['text_blocs'] + [block]
+
+                    parsed_dict[pagenum] = result
+
+                # mark "continued" for continued text blocks
+                for key in parsed_dict.keys():
+                    if key != 0:
+                        for box in parsed_dict[key]:
+                            if box['type'] == 'text':
+                                dictkey = key - 1
+                                if parsed_dict[dictkey][-1]['type'] == 'text':
+                                    box['continued'] = True
+
+                st.session_state['parsed_json'] = parsed_dict
+
+                # extract title blocks from parsed_dict, where parsed_dict[key][i]['type'] == 'title'
+                title_blocks = {}
+                for key in parsed_dict.keys():
+                    title_blocks[key] = [box for box in parsed_dict[key] if box['type'] == 'title']
+
+                # extract each title block, and append bbox, text, and page number
+                title_blocks_list = []
+                for key in title_blocks.keys():
+                    if len(title_blocks[key]) > 0:
+                        for box in title_blocks[key]:
+                            # remove non-chareter symbols
+                            if len(box['text_blocs']) > 0:
+                                fixed_text = re.sub(r'[^가-힣a-zA-Z0-9\s]', '', box['text_blocs'][0][4])
+                            else:
+                                fixed_text = ''
+                            # fix punctuations etc.
+                            # fixed_text = fix_punct(box['text_blocs'][0][4])
+                            title_blocks_list.append([box['bbox'], fixed_text, key])
+
+                # get embedding for title block texts
+                import nlpcloud
+                title_token_list = [bloc[1] for bloc in title_blocks_list]
+
+                if len(title_token_list) == 0:
+                    st.warning('문서 구조 인식에 실패했습니다. 다른 문서를 시도해주세요.')
+                    st.stop()
+                    # st.experimental_rerun()
+
+                client = nlpcloud.Client(
+                    "paraphrase-multilingual-mpnet-base-v2",
+                    "ba1502dcfefb24cea5e6abf80a6be1d5c755beba"
+                    )
+                st.session_state['client'] = client
+
+                title_embeddings = client.embeddings(title_token_list)
+
+                # zip with title_blocks_list
+                title_blocks_list = [title_blocks_list[i] + [title_embeddings['embeddings'][i]] for i in range(len(title_blocks_list))]
+
+                st.session_state['title_blocks_list'] = title_blocks_list
+
+                parsing_done = True
+                st.session_state['parsing_done'] = parsing_done
+
+                st.success('문서 구조 인식이 완료되었습니다.')
+
+    if not st.session_state['parsing_done']:
+        pass
+
+if choose == "PDF: 유사 단락 검색":
 
     st.write('검색 대상 문서을 아래에 업로드하고 검색어를 입력하면 검색어와 가장 연관성 높은 섹션을 찾아줍니다.')
 
@@ -332,14 +493,12 @@ if choose == "PDF: 유사 단락 검색 모델":
                 st.session_state['top1_similarity'] = top1_similarity
 
 
-
                 # # draw bbox of top 1 match on the page where the top 1 match is located
                 # page = st.session_state['doc'].load_page(top1_pagenum)
                 # page.draw_rect(top1_bbox, color=(0, 0, 1), width=2, overlay=True)
 
                 # # display the page
                 # st.image(Image.open(BytesIO(page.get_pixmap()), use_column_width=False))
-
 
 
                 # st.write('검색어와 가장 유사한 단락은 다음과 같습니다.')
